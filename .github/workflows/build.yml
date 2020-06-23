@@ -57,6 +57,6 @@ jobs:
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: 
-        cluster: my-cluster
+        service: cinfra-dev-gcp-mongo-autodesk
+        cluster: cinfra-dev-gcp-exporter
         wait-for-service-stability: true
