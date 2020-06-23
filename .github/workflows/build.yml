@@ -20,7 +20,7 @@ jobs:
     - name: git clone
       uses: actions/checkout@v2
       with:
-        repository: https://github.com/tarasowlad/mongodb_exporter.git
+        repository: github.com/tarasowlad/mongodb_exporter.git
         ref: ${{ env.REALISE }}
 
   
