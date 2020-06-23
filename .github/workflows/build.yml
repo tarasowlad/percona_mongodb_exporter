@@ -11,7 +11,10 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     env:
-      test: 33
+      CLUSTER_NAME: cinfra-dev-gcp-exporter
+      SERVICE_NAME: cinfra-dev-gcp-mongo-autodesk
+      CONTAINER_NAME: cinfra-dev-gcp-mongo-autodesk
+      ECR_REPOSITORY: common/gcp/mongodb_exporter
     steps:
 
     - name: git clone percona_mongodb_exporter
@@ -26,7 +29,7 @@ jobs:
 
     - name: Download task definition
       run: |
-        aws ecs describe-task-definition --task-definition cinfra-dev-gcp-mongo-autodesk --query taskDefinition > task-definition.json
+        aws ecs describe-task-definition --task-definition $SERVICE_NAME --query taskDefinition > task-definition.json
     
     - name: Login to Amazon ECR
       id: login-ecr
@@ -36,7 +39,6 @@ jobs:
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: common/gcp/mongodb_exporter
         IMAGE_TAG: ${{ github.sha }}
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -50,13 +52,13 @@ jobs:
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: task-definition.json
-        container-name: cinfra-dev-gcp-mongo-autodesk
+        container-name: $CONTAINER_NAME
         image: ${{ steps.build-image.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: cinfra-dev-gcp-mongo-autodesk
-        cluster: cinfra-dev-gcp-exporter
+        service: $SERVICE_NAME
+        cluster: $CLUSTER_NAME
         wait-for-service-stability: true
