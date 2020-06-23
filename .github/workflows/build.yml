@@ -8,19 +8,21 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: Build push update
     runs-on: ubuntu-latest
     env:
-      CLUSTER_NAME: cinfra-dev-gcp-exporter
-      SERVICE_NAME: cinfra-dev-gcp-mongo-autodesk
-      CONTAINER_NAME: cinfra-dev-gcp-mongo-autodesk
-      ECR_REPOSITORY: common/gcp/mongodb_exporter
       REALISE: master
+    
     steps:
+    # - name: git clone
+    #   run: | 
+    #     git clone --branch $REALISE --single-branch https://github.com/tarasowlad/mongodb_exporter.git .
+    - name: git clone
+      uses: actions/checkout@v2
+      with:
+        repository: https://github.com/tarasowlad/mongodb_exporter.git
+        ref: ${{ env.REALISE }}
 
-    - name: git clone percona_mongodb_exporter
-      run: | 
-        git clone --branch $REALISE --single-branch https://github.com/tarasowlad/mongodb_exporter.git .
   
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -31,7 +33,7 @@ jobs:
 
     - name: Download task definition
       run: |
-        aws ecs describe-task-definition --task-definition $SERVICE_NAME --query taskDefinition > task-definition.json
+        aws ecs describe-task-definition --task-definition ${{ secrets.SERVICE_NAME }} --query taskDefinition > task-definition.json
     
     - name: Login to Amazon ECR
       id: login-ecr
@@ -43,24 +45,24 @@ jobs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+        docker build -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+        docker build -t $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY }}:latest .
+        docker push $ECR_REGISTRY/${{ secrets.ECR_REPOSITORY }}:latest
+        echo "::set-output name=image::$ECR_REGISTRY/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG"
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: task-definition.json
-        container-name: ${{ env.CONTAINER_NAME }}
+        container-name: ${{ secrets.CONTAINER_NAME }}
         image: ${{ steps.build-image.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: ${{ env.SERVICE_NAME }}
-        cluster: ${{ env.CLUSTER_NAME }}
+        service: ${{ secrets.SERVICE_NAME }}
+        cluster: ${{ secrets.CLUSTER_NAME }}
         wait-for-service-stability: true
